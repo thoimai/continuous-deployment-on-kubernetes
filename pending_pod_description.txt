@@ -1,0 +1,136 @@
+Name:             cd-jenkins-0
+Namespace:        default
+Priority:         0
+Service Account:  cd-jenkins
+Node:             <none>
+Labels:           app.kubernetes.io/component=jenkins-controller
+                  app.kubernetes.io/instance=cd
+                  app.kubernetes.io/managed-by=Helm
+                  app.kubernetes.io/name=jenkins
+                  controller-revision-hash=cd-jenkins-6f7d5fc959
+                  statefulset.kubernetes.io/pod-name=cd-jenkins-0
+Annotations:      checksum/config: ac914e30627ea311216914e62c1edfdba052820262eba3b1865372a385707c41
+Status:           Pending
+IP:               
+IPs:              <none>
+Controlled By:    StatefulSet/cd-jenkins
+Init Containers:
+  init:
+    Image:      jenkins/jenkins:2.401.1-jdk11
+    Port:       <none>
+    Host Port:  <none>
+    Command:
+      sh
+      /var/jenkins_config/apply_config.sh
+    Limits:
+      cpu:     1
+      memory:  3500Mi
+    Requests:
+      cpu:        50m
+      memory:     1Gi
+    Environment:  <none>
+    Mounts:
+      /tmp from tmp-volume (rw)
+      /usr/share/jenkins/ref/plugins from plugins (rw)
+      /var/jenkins_config from jenkins-config (rw)
+      /var/jenkins_home from jenkins-home (rw)
+      /var/jenkins_plugins from plugin-dir (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-jqdxh (ro)
+Containers:
+  jenkins:
+    Image:       jenkins/jenkins:2.401.1-jdk11
+    Ports:       8080/TCP, 50000/TCP
+    Host Ports:  0/TCP, 0/TCP
+    Args:
+      --httpPort=8080
+    Limits:
+      cpu:     1
+      memory:  3500Mi
+    Requests:
+      cpu:      50m
+      memory:   1Gi
+    Liveness:   http-get http://:http/login delay=0s timeout=5s period=10s #success=1 #failure=5
+    Readiness:  http-get http://:http/login delay=0s timeout=5s period=10s #success=1 #failure=3
+    Startup:    http-get http://:http/login delay=0s timeout=5s period=10s #success=1 #failure=12
+    Environment:
+      SECRETS:                   /run/secrets/additional
+      POD_NAME:                  cd-jenkins-0 (v1:metadata.name)
+      JAVA_OPTS:                 -Dcasc.reload.token=$(POD_NAME) -Xms3500m -Xmx3500m
+      JENKINS_OPTS:              --webroot=/var/jenkins_cache/war 
+      JENKINS_SLAVE_AGENT_PORT:  50000
+      CASC_JENKINS_CONFIG:       /var/jenkins_home/casc_configs
+    Mounts:
+      /run/secrets/additional from jenkins-secrets (ro)
+      /tmp from tmp-volume (rw)
+      /usr/share/jenkins/ref/plugins/ from plugin-dir (rw)
+      /var/jenkins_cache from jenkins-cache (rw)
+      /var/jenkins_config from jenkins-config (ro)
+      /var/jenkins_home from jenkins-home (rw)
+      /var/jenkins_home/casc_configs from sc-config-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-jqdxh (ro)
+  config-reload:
+    Image:      kiwigrid/k8s-sidecar:1.23.1
+    Port:       <none>
+    Host Port:  <none>
+    Environment:
+      POD_NAME:           cd-jenkins-0 (v1:metadata.name)
+      LABEL:              cd-jenkins-jenkins-config
+      FOLDER:             /var/jenkins_home/casc_configs
+      NAMESPACE:          default
+      REQ_URL:            http://localhost:8080/reload-configuration-as-code/?casc-reload-token=$(POD_NAME)
+      REQ_METHOD:         POST
+      REQ_RETRY_CONNECT:  10
+    Mounts:
+      /var/jenkins_home from jenkins-home (rw)
+      /var/jenkins_home/casc_configs from sc-config-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-jqdxh (ro)
+Conditions:
+  Type           Status
+  PodScheduled   False 
+Volumes:
+  plugins:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  jenkins-config:
+    Type:      ConfigMap (a volume populated by a ConfigMap)
+    Name:      cd-jenkins
+    Optional:  false
+  plugin-dir:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  jenkins-secrets:
+    Type:                Projected (a volume that contains injected data from multiple sources)
+    SecretName:          cd-jenkins
+    SecretOptionalName:  <nil>
+  jenkins-cache:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  jenkins-home:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  cd-jenkins
+    ReadOnly:   false
+  sc-config-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  tmp-volume:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  kube-api-access-jqdxh:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason            Age                  From               Message
+  ----     ------            ----                 ----               -------
+  Warning  FailedScheduling  8m25s (x2 over 18m)  default-scheduler  running PreBind plugin "VolumeBinding": binding volumes: timed out waiting for the condition
